@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Python 2.7 × Docker × Kali Linux</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --docker-blue: #0db7ed;
+    --docker-dark: #0b3d6b;
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    padding: 80px 40px 70px;
+    text-align: center;
+    background: linear-gradient(135deg, #0d1117 0%, #0b3d6b 55%, #0a7fad 100%);
+    border-bottom: 1px solid var(--docker-blue);
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(13,183,237,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(11,61,107,0.3) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 5px;
+    color: var(--docker-blue);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards 0.1s;
+  }
+
+  .hero-title {
+    font-family: var(--mono);
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.15;
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards 0.25s;
+  }
+
+  .hero-title span { color: var(--docker-blue); }
+
+  .hero-sub {
+    font-family: var(--sans);
+    font-size: 16px;
+    color: #7ab8d4;
+    font-style: italic;
+    margin-bottom: 36px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards 0.4s;
+  }
+
+  .badges {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards 0.55s;
+  }
+
+  .badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: 1px solid;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .badge:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+  .badge-docker  { background: rgba(13,183,237,0.1); border-color: var(--docker-blue); color: var(--docker-blue); }
+  .badge-python  { background: rgba(54,112,160,0.15); border-color: #4b8bbe; color: #79c0ff; }
+  .badge-kali    { background: rgba(85,124,148,0.15); border-color: #557c94; color: #7ab3cc; }
+
+  /* ── NAV DOTS ── */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(13,17,23,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px 40px;
+  }
+
+  .nav a {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .nav a:hover { color: var(--docker-blue); border-color: var(--docker-blue); }
+
+  /* ── MAIN ── */
+  main { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ── SECTION ── */
+  .section {
+    padding: 60px 0 0;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .section.visible { opacity: 1; transform: translateY(0); }
+
+  .section-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--docker-blue);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .section-tag::before {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: var(--docker-blue);
+  }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 20px;
+    line-height: 1.2;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 60px 0 0;
+  }
+
+  /* ── PROBLEM CARDS ── */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin: 24px 0;
+  }
+
+  .problem-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .problem-card:hover { border-color: var(--red); transform: translateY(-2px); }
+
+  .problem-card .icon { font-size: 22px; margin-bottom: 10px; }
+
+  .problem-card .bad {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--red);
+    margin-bottom: 8px;
+  }
+
+  .problem-card .why {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ── CALLOUT ── */
+  .callout {
+    background: rgba(13,183,237,0.07);
+    border: 1px solid rgba(13,183,237,0.3);
+    border-left: 3px solid var(--docker-blue);
+    border-radius: 0 10px 10px 0;
+    padding: 18px 22px;
+    margin-top: 24px;
+    font-size: 15px;
+    color: #cae8ff;
+    line-height: 1.75;
+  }
+
+  .callout strong { color: var(--docker-blue); }
+
+  /* ── CMD BOX ── */
+  .cmd-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 24px 0;
+  }
+
+  .cmd-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cmd-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .cmd-dot.r { background: #f85149; }
+  .cmd-dot.y { background: #d29922; }
+  .cmd-dot.g { background: #3fb950; }
+  .cmd-label-text { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: 4px; letter-spacing: 1px; }
+
+  .cmd-body { padding: 20px 22px; }
+
+  .cmd-line {
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 2;
+  }
+
+  .cmd-line .prompt { color: var(--green); user-select: none; }
+  .cmd-line .cmd-text { color: #79c0ff; }
+  .cmd-line .comment { color: var(--muted); }
+  .cmd-line .output { color: var(--green); }
+  .cmd-line .output-muted { color: var(--muted); }
+
+  /* ── FLAG TABLE ── */
+  .flag-table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+  .flag-table th {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .flag-table td {
+    padding: 13px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--bg3);
+    vertical-align: top;
+  }
+  .flag-table td:first-child {
+    font-family: var(--mono);
+    color: #79c0ff;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+  .flag-table td:last-child { color: var(--muted); }
+  .flag-table tr:last-child td { border-bottom: none; }
+  .flag-table tr:hover td { background: var(--bg2); }
+
+  /* ── STEPS ── */
+  .steps { margin-top: 24px; display: flex; flex-direction: column; gap: 0; }
+
+  .step {
+    display: flex;
+    gap: 20px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+
+  .step:last-child { border-bottom: none; }
+
+  .step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--docker-blue);
+    color: #0d1117;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .step-content { flex: 1; }
+
+  .step-title {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  /* ── SYNC VISUAL ── */
+  .sync {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 24px 0 16px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .sync-side {
+    flex: 1;
+    padding: 20px 24px;
+    background: var(--bg2);
+  }
+
+  .sync-side:first-child { border-right: none; }
+
+  .sync-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .sync-files {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #79c0ff;
+    line-height: 2;
+  }
+
+  .sync-arrow {
+    padding: 0 20px;
+    font-size: 22px;
+    color: var(--docker-blue);
+    font-weight: 700;
+    background: var(--bg3);
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+
+  /* ── SHIELD TABLE ── */
+  .shield-table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+  .shield-table th {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .shield-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--bg3);
+  }
+  .shield-table td:first-child { color: var(--text); font-weight: 500; }
+  .shield-table td:last-child {
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .shield-table tr:last-child td { border-bottom: none; }
+  .shield-table tr:hover td { background: var(--bg2); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 60px 24px 40px;
+    border-top: 1px solid var(--border);
+    margin-top: 60px;
+  }
+
+  .footer-quote {
+    font-size: 15px;
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 16px;
+  }
+
+  .footer-handle {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--docker-blue);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .footer-handle:hover { text-decoration: underline; }
+
+  .footer-stack {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 24px;
+  }
+
+  .stack-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── BODY TEXT ── */
+  .body-text { font-size: 15px; color: var(--muted); line-height: 1.8; }
+  .body-text strong { color: var(--text); }
+
+  @media (max-width: 600px) {
+    .hero { padding: 50px 20px 44px; }
+    .hero-title { font-size: 26px; }
+    .problem-grid { grid-template-columns: 1fr; }
+    .sync { flex-direction: column; }
+    .sync-arrow { padding: 12px; align-self: center; border: none; }
+    .nav { gap: 2px; padding: 10px 16px; }
+    .nav a { font-size: 10px; padding: 4px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-eyebrow">🐳 Docker &nbsp;×&nbsp; 🐍 Python 2.7 &nbsp;×&nbsp; 🐉 Kali Linux</div>
+  <h1 class="hero-title">Isolated. Clean.<br><span>Zero Side Effects.</span></h1>
+  <p class="hero-sub">Because sometimes the old snake needs its own cage.</p>
+  <div class="badges">
+    <div class="badge badge-docker">🐳 Docker</div>
+    <div class="badge badge-python">🐍 Python 2.7.18</div>
+    <div class="badge badge-kali">🐉 Kali Linux</div>
+  </div>
+</header>
+
+<!-- STICKY NAV -->
+<nav class="nav">
+  <a href="#problem">01 Problem</a>
+  <a href="#command">02 Command</a>
+  <a href="#setup">03 Setup</a>
+  <a href="#inside">04 Inside</a>
+  <a href="#safety">05 Safety</a>
+</nav>
+
+<main>
+
+  <!-- 01 PROBLEM -->
+  <section class="section" id="problem">
+    <div class="section-tag">01 — The Problem</div>
+    <h2 class="section-title">💀 The Problem Nobody Talks About</h2>
+    <p class="body-text">
+      You fire up Kali. You need Python 2.7. Your system laughs and spits out <code style="background:var(--bg2);color:#79c0ff;padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:13px;">Python 3.x.x</code>.
+      So you Google it — and find three kinds of advice. <strong>All of them wrong.</strong>
+    </p>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="icon">❌</div>
+        <div class="bad">"Uninstall Python 3"</div>
+        <div class="why">Kali depends on it. Your whole system breaks. Have fun.</div>
+      </div>
+      <div class="problem-card">
+        <div class="icon">❌</div>
+        <div class="bad">"Use pyenv"</div>
+        <div class="why">2 hours of config pain for something Docker does in 10 seconds.</div>
+      </div>
+      <div class="problem-card">
+        <div class="icon">❌</div>
+        <div class="bad">"Edit .zshrc"</div>
+        <div class="why">Shell configs are sacred. Keep your hands off.</div>
+      </div>
+    </div>
+    <div class="callout">
+      💡 <strong>The real answer?</strong> Spin up a Docker container. Mount your folder inside it. Get Python 2.7. Leave everything else completely alone. <strong>One command. Zero side effects.</strong>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- 02 COMMAND -->
+  <section class="section" id="command">
+    <div class="section-tag">02 — The Command</div>
+    <h2 class="section-title">⚡ The One Command That Does It All</h2>
+    <p class="body-text">Navigate into your project folder and fire this. You land inside a live Python 2.7 shell — isolated, clean, scoped <em>only</em> to that folder.</p>
+    <div class="cmd-box">
+      <div class="cmd-header">
+        <div class="cmd-dot r"></div>
+        <div class="cmd-dot y"></div>
+        <div class="cmd-dot g"></div>
+        <span class="cmd-label-text">bash</span>
+      </div>
+      <div class="cmd-body">
+        <div class="cmd-line">
+          <span class="prompt">$ </span>
+          <span class="cmd-text">sudo docker run -it -v "$PWD:/app" -w /app python:2.7-slim bash</span>
+        </div>
+        <div class="cmd-line" style="margin-top:12px;">
+          <span class="output">root@a3f2c1d0e5b8:/app# </span>
+          <span class="output-muted">← inside the bubble now 🫧</span>
+        </div>
+      </div>
+    </div>
+    <p class="body-text" style="margin-bottom:16px;">Your Kali system outside? <strong>Untouched. Unbothered. Still on Python 3.</strong> Here's what each flag does:</p>
+    <table class="flag-table">
+      <thead><tr><th>Flag</th><th>What It Does</th></tr></thead>
+      <tbody>
+        <tr><td>-it</td><td>Interactive terminal — gives you a live shell</td></tr>
+        <tr><td>-v "$PWD:/app"</td><td>Mounts your folder ↔ /app inside the container</td></tr>
+        <tr><td>-w /app</td><td>Sets /app as the working directory on entry</td></tr>
+        <tr><td>python:2.7-slim</td><td>Official lightweight Python 2.7.18 image</td></tr>
+        <tr><td>bash</td><td>Opens a shell, not the Python REPL directly</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- 03 SETUP -->
+  <section class="section" id="setup">
+    <div class="section-tag">03 — Setup</div>
+    <h2 class="section-title">🛠️ Full Setup — Don't Skip Steps</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Install Docker</div>
+          <div class="cmd-box">
+            <div class="cmd-header"><div class="cmd-dot r"></div><div class="cmd-dot y"></div><div class="cmd-dot g"></div><span class="cmd-label-text">bash</span></div>
+            <div class="cmd-body">
+              <div class="cmd-line"><span class="prompt">$ </span><span class="cmd-text">sudo apt update</span></div>
+              <div class="cmd-line"><span class="prompt">$ </span><span class="cmd-text">sudo apt install -y docker.io</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Start the engine</div>
+          <div class="cmd-box">
+            <div class="cmd-header"><div class="cmd-dot r"></div><div class="cmd-dot y"></div><div class="cmd-dot g"></div><span class="cmd-label-text">bash</span></div>
+            <div class="cmd-body">
+              <div class="cmd-line"><span class="prompt">$ </span><span class="cmd-text">sudo systemctl enable --now docker</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Enter your project folder</div>
+          <div class="cmd-box">
+            <div class="cmd-header"><div class="cmd-dot r"></div><div class="cmd-dot y"></div><div class="cmd-dot g"></div><span class="cmd-label-text">bash</span></div>
+            <div class="cmd-body">
+              <div class="cmd-line"><span class="prompt">$ </span><span class="cmd-text">cd ~/your-project-folder</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Launch the bubble 🫧</div>
+          <div class="cmd-box">
+            <div class="cmd-header"><div class="cmd-dot r"></div><div class="cmd-dot y"></div><div class="cmd-dot g"></div><span class="cmd-label-text">bash</span></div>
+            <div class="cmd-body">
+              <div class="cmd-line"><span class="prompt">$ </span><span class="cmd-text">sudo docker run -it -v "$PWD:/app" -w /app python:2.7-slim bash</span></div>
+              <div class="cmd-line" style="margin-top:10px;"><span class="output">✓ You're in. Welcome to 2.7. 🐍</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- 04 INSIDE -->
+  <section class="section" id="inside">
+    <div class="section-tag">04 — Inside</div>
+    <h2 class="section-title">✅ Once You're Inside</h2>
+    <div class="cmd-box">
+      <div class="cmd-header"><div class="cmd-dot r"></div><div class="cmd-dot y"></div><div class="cmd-dot g"></div><span class="cmd-label-text">bash</span></div>
+      <div class="cmd-body">
+        <div class="cmd-line"><span class="prompt">$ </span><span class="cmd-text">python --version</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Python 2.7.18  ✓</span></div>
+        <div class="cmd-line"><span class="prompt">$ </span><span class="cmd-text">python script.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># run your script</span></div>
+        <div class="cmd-line"><span class="prompt">$ </span><span class="cmd-text">pip install requests</span> &nbsp;&nbsp;<span class="comment"># install packages normally</span></div>
+      </div>
+    </div>
+    <p class="body-text" style="margin: 20px 0 0;"><strong>The part that feels like magic</strong> — files in your project folder appear <em>instantly</em> at <code style="background:var(--bg2);color:#79c0ff;padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:13px;">/app</code> inside the container. Edit from either side — changes show up on both. No syncing. No copying. No pain.</p>
+    <div class="sync">
+      <div class="sync-side">
+        <div class="sync-label">Your Kali Machine</div>
+        <div class="sync-files">~/your-project/<br>&nbsp;&nbsp;script.py<br>&nbsp;&nbsp;output.log</div>
+      </div>
+      <div class="sync-arrow">⟷</div>
+      <div class="sync-side">
+        <div class="sync-label">The Docker Bubble</div>
+        <div class="sync-files">/app/<br>&nbsp;&nbsp;script.py<br>&nbsp;&nbsp;output.log</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- 05 SAFETY -->
+  <section class="section" id="safety">
+    <div class="section-tag">05 — Safety</div>
+    <h2 class="section-title">🛡️ What Stays Completely Untouched</h2>
+    <table class="shield-table">
+      <thead><tr><th>Component</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>System Python 3</td><td>✅ Completely untouched</td></tr>
+        <tr><td>Kali tools &amp; packages</td><td>✅ Not affected at all</td></tr>
+        <tr><td>.zshrc / shell config</td><td>✅ Never even opened</td></tr>
+        <tr><td>Your project files</td><td>✅ Accessible from both sides</td></tr>
+        <tr><td>Your sanity</td><td>✅ Intact</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <p class="footer-quote">If it works, ship it. If it breaks, containerize it.</p>
+  <a class="footer-handle" href="https://github.com/xeevees-lab" target="_blank">@xeevees-lab</a>
+  <div class="footer-stack">
+    <span class="stack-pill">🐳 Docker</span>
+    <span class="stack-pill">🐍 Python 2.7.18</span>
+    <span class="stack-pill">🐉 Kali Linux</span>
+    <span class="stack-pill">bash</span>
+  </div>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.section').forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
